@@ -1,10 +1,7 @@
-# cse406-project
-CSE 406/506 Project Parts 1-3
 # CSE 406/506 Project
 
 ## Team Members
 - Shihao Liu
-- [队友名字，如果有]
 
 ## Project Overview
 This repository contains the completed code for:
