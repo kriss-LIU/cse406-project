@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeFi Vault UI</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f7f7f7;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    input, button {
+      padding: 10px;
+      margin-top: 8px;
+      margin-right: 8px;
+    }
+    button {
+      cursor: pointer;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>DeFi Vault UI</h1>
+
+  <div class="card">
+    <button onclick="connectWallet()">Connect Wallet</button>
+    <p><span class="label">Wallet:</span> <span id="wallet">Not connected</span></p>
+  </div>
+
+  <div class="card">
+    <p><span class="label">SHT Balance:</span> <span id="tokenBalance">-</span></p>
+    <p><span class="label">Vault Shares:</span> <span id="vaultBalance">-</span></p>
+    <p><span class="label">Membership Balance:</span> <span id="membershipBalance">-</span></p>
+  </div>
+
+  <div class="card">
+    <h3>Approve</h3>
+    <input id="approveAmount" type="text" placeholder="Amount in SHT, e.g. 100" />
+    <button onclick="approveToken()">Approve Vault</button>
+  </div>
+
+  <div class="card">
+    <h3>Deposit</h3>
+    <input id="depositAmount" type="text" placeholder="Amount in SHT, e.g. 100" />
+    <button onclick="deposit()">Deposit</button>
+  </div>
+
+  <div class="card">
+    <h3>Withdraw</h3>
+    <input id="withdrawAmount" type="text" placeholder="Shares, e.g. 100" />
+    <button onclick="withdrawShares()">Withdraw</button>
+  </div>
+
+  <script>
+    const TOKEN_ADDRESS = "0x7f1f96d4deD5Ce24D183f43954e13073f747565C";
+    const VAULT_ADDRESS = "0xB4762844C25aDfF031c04528ff97Db1b3416c0dD";
+
+    const tokenAbi = [
+      "function balanceOf(address) view returns (uint256)",
+      "function approve(address spender, uint256 amount) returns (bool)"
+    ];
+
+    const vaultAbi = [
+      "function deposit(uint256 _amount) external",
+      "function withdraw(uint256 _shares) external",
+      "function balanceOf(address) view returns (uint256)",
+      "function _balanceOfmembershipToken(address) view returns (uint256)"
+    ];
+
+    let provider, signer, userAddress;
+    let tokenContract, vaultContract;
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("MetaMask not found");
+        return;
+      }
+
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      tokenContract = new ethers.Contract(TOKEN_ADDRESS, tokenAbi, signer);
+      vaultContract = new ethers.Contract(VAULT_ADDRESS, vaultAbi, signer);
+
+      document.getElementById("wallet").innerText = userAddress;
+      await refreshBalances();
+    }
+
+    async function refreshBalances() {
+      const tokenBal = await tokenContract.balanceOf(userAddress);
+      const vaultBal = await vaultContract.balanceOf(userAddress);
+      const membershipBal = await vaultContract._balanceOfmembershipToken(userAddress);
+
+      document.getElementById("tokenBalance").innerText =
+        ethers.formatUnits(tokenBal, 18);
+      document.getElementById("vaultBalance").innerText =
+        ethers.formatUnits(vaultBal, 18);
+      document.getElementById("membershipBalance").innerText =
+        membershipBal.toString();
+    }
+
+    async function approveToken() {
+      const amount = document.getElementById("approveAmount").value;
+      const parsed = ethers.parseUnits(amount, 18);
+      const tx = await tokenContract.approve(VAULT_ADDRESS, parsed);
+      await tx.wait();
+      await refreshBalances();
+      alert("Approve success");
+    }
+
+    async function deposit() {
+      const amount = document.getElementById("depositAmount").value;
+      const parsed = ethers.parseUnits(amount, 18);
+      const tx = await vaultContract.deposit(parsed);
+      await tx.wait();
+      await refreshBalances();
+      alert("Deposit success");
+    }
+
+    async function withdrawShares() {
+      const amount = document.getElementById("withdrawAmount").value;
+      const parsed = ethers.parseUnits(amount, 18);
+      const tx = await vaultContract.withdraw(parsed);
+      await tx.wait();
+      await refreshBalances();
+      alert("Withdraw success");
+    }
+  </script>
+</body>
+</html>
